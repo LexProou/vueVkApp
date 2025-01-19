@@ -6,7 +6,7 @@
 </template>
 
 <script>
-import VkUserManager from './components/VkUserManager.vue';
+import VkUserManager from './components/VkUsersApp.vue';
 
 export default {
   name: 'App',
