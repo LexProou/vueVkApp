@@ -41,7 +41,7 @@
         </li>
       </ul>
 
-      <!--Строим список друзей -->
+      <!-- Строим список друзей -->
       <button 
         @click="buildFriendsList" 
         class="w-full my-5 bg-blue-500 hover:bg-blue-600 disabled:bg-gray-400 disabled:cursor-not-allowed text-white py-2 px-4 rounded transition duration-300"
@@ -112,9 +112,9 @@ export default {
       isLoggedIn: false,
       accessToken: null,
       searchQuery: '',
-      searchResults: [], 
-      sourceList: [],  
-      friendsList: [], 
+      searchResults: [],
+      sourceList: [],
+      friendsList: [],
       selectedFriend: null,
       friendSources: [],
       friendPosts: [],
@@ -148,7 +148,6 @@ export default {
       }, VK.access.FRIENDS | VK.access.PHOTOS);
     },
 
-    // Поиск пользователей
     searchUsers() {
       if (this.searchQuery.trim().length < 3) {
         this.searchResults = [];
@@ -173,21 +172,19 @@ export default {
       });
     },
 
-    // Добавление пользователя в исходный список
     addUser(user) {
-      this.sourceList.push(user);  
-      this.searchQuery = '';  
-      this.searchResults = []; 
+      this.sourceList.push(user);
+      this.searchQuery = '';
+      this.searchResults = [];
     },
 
-    // Удаление пользователя из исходного списка
     removeUser(user) {
       this.sourceList = this.sourceList.filter(u => u.id !== user.id);
-      this.friendsList = []; 
+      this.friendsList = [];
     },
 
     async buildFriendsList() {
-      const friendsMap = new Map(); 
+      const friendsMap = new Map();
 
       for (const sourceUser of this.sourceList) {
         try {
@@ -217,7 +214,7 @@ export default {
       return new Promise((resolve, reject) => {
         VK.Api.call('friends.get', {
           user_id: userId,
-          fields: 'photo_100,sex,bdate,friends_count',
+          fields: 'photo_100,sex,bdate',
           v: '5.211'
         }, (response) => {
           if (response.response) {
@@ -230,7 +227,7 @@ export default {
     },
 
     async enrichFriendsData() {
-      this.friendsList = this.friendsList.map(friend => {
+      for (let friend of this.friendsList) {
         if (friend.bdate) {
           const [day, month, year] = friend.bdate.split('.');
           if (year) {
@@ -239,7 +236,33 @@ export default {
             friend.age = age;
           }
         }
-        return friend;
+        try {
+          const friendsCountResponse = await this.getFriendsCount(friend.id);
+          friend.friends_count = friendsCountResponse.count;
+        } catch (error) {
+          if (error.error_code === 30) {
+            console.warn(`Profile of user ${friend.id} is private.`);
+            friend.friends_count = 'Профиль приватный';
+          } else {
+            console.error('Error fetching friends count:', error);
+            friend.friends_count = 'Не указано';
+          }
+        }
+      }
+    },
+
+    getFriendsCount(userId) {
+      return new Promise((resolve, reject) => {
+        VK.Api.call('friends.get', {
+          user_id: userId,
+          v: '5.211'
+        }, (response) => {
+          if (response.response) {
+            resolve({ count: response.response.count });
+          } else {
+            reject(response.error);
+          }
+        });
       });
     },
 
@@ -292,11 +315,3 @@ export default {
   },
 };
 </script>
-
-<style scoped>
-
-@import '../input.css';
-@import '../output.css';
-@import '../assets/main.css';
-
-</style>
